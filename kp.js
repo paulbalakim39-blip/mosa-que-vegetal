@@ -1,0 +1,1273 @@
+    //<!-- ============================================
+    //     JAVASCRIPT - LOGIQUE DE L'APPLICATION
+    //     ============================================ -->
+    //<script>
+    //    // ==========================================
+    //    // DONNÉES ET ÉTAT GLOBAL
+    //    // ==========================================
+    //    
+        //Base de données locale (simulation)
+        let db = {
+            users: JSON.parse(localStorage.getItem('lmv_users')) || [],
+            contents: JSON.parse(localStorage.getItem('lmv_contents')) || [],
+            products: JSON.parse(localStorage.getItem('lmv_products')) || [],
+            notifications: JSON.parse(localStorage.getItem('lmv_notifications')) || [],
+            subscriptions: JSON.parse(localStorage.getItem('lmv_subscriptions')) || []
+        };
+
+        let currentUser = JSON.parse(localStorage.getItem('lmv_currentUser')) || null;
+        let currentSection = 'accueil';
+        let currentUploadType = 'video';
+
+        // Données de démonstration si la base est vide
+        if (db.users.length === 0) {
+            initializeDemoData();
+        }
+
+        // ==========================================
+        // INITIALISATION
+        // ==========================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateUI();
+            setupEventListeners();
+        });
+
+        function initializeDemoData() {
+            // Utilisateurs de démo
+            const demoUsers = [
+                {
+                    id: '1',
+                    name: 'Dr. Amadou Diallo',
+                    email: 'amadou@example.com',
+                    password: 'password',
+                    type: 'agronome',
+                    specialty: 'Agronomie générale',
+                    avatar: 'AD',
+                    bio: 'Agronome avec 15 ans d\'expérience dans les cultures vivrières',
+                    experience: 15,
+                    subscribers: 12500,
+                    joined: '2023-01-15'
+                },
+                {
+                    id: '2',
+                    name: 'Fatou Ndiaye',
+                    email: 'fatou@example.com',
+                    password: 'password',
+                    type: 'vendeur',
+                    specialty: 'Semences bio',
+                    avatar: 'FN',
+                    subscribers: 3400,
+                    joined: '2023-03-20'
+                },
+                {
+                    id: '3',
+                    name: 'Kofi Mensah',
+                    email: 'kofi@example.com',
+                    password: 'password',
+                    type: 'loueur',
+                    specialty: 'Matériel de labour',
+                    avatar: 'KM',
+                    subscribers: 890,
+                    joined: '2023-06-10'
+                }
+            ];
+
+            // Contenus de démo
+            const demoContents = [
+                {
+                    id: '1',
+                    userId: '1',
+                    type: 'video',
+                    title: 'Comment améliorer votre rendement de maïs',
+                    description: 'Techniques modernes d\'agriculture pour doubler votre production de maïs cette saison.',
+                    thumbnail: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600',
+                    duration: '12:45',
+                    views: 15420,
+                    likes: 1203,
+                    date: '2024-01-15',
+                    category: 'conseil'
+                },
+                {
+                    id: '2',
+                    userId: '1',
+                    type: 'video',
+                    title: 'Formation complète : Culture du riz en zone inondable',
+                    description: 'Apprenez les meilleures pratiques pour la culture du riz.',
+                    thumbnail: 'https://images.unsplash.com/photo-1536617621572-1d5f1e6269a0?w=600',
+                    duration: '45:20',
+                    views: 8750,
+                    likes: 650,
+                    date: '2024-01-10',
+                    category: 'formation'
+                },
+                {
+                    id: '3',
+                    userId: '2',
+                    type: 'video',
+                    title: 'Présentation de nos nouvelles semences hybrides',
+                    description: 'Découvrez notre gamme 2024 de semences haute performance.',
+                    thumbnail: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600',
+                    duration: '8:30',
+                    views: 3200,
+                    likes: 180,
+                    date: '2024-01-12',
+                    category: 'presentation'
+                }
+            ];
+
+            // Produits de démo
+            const demoProducts = [
+                {
+                    id: '1',
+                    userId: '2',
+                    name: 'Semences de maïs hybride QPM',
+                    category: 'semences',
+                    type: 'vente',
+                    price: 15000,
+                    image: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=400',
+                    description: 'Semences certifiées haute qualité protéique'
+                },
+                {
+                    id: '2',
+                    userId: '3',
+                    name: 'Tracteur John Deere 5055E',
+                    category: 'tracteur',
+                    type: 'location',
+                    price: 50000,
+                    duration: 'jour',
+                    image: 'https://images.unsplash.com/photo-1592982537447-6f2a6a0c812d?w=400',
+                    description: 'Location journalière avec opérateur'
+                }
+            ];
+
+            db.users = demoUsers;
+            db.contents = demoContents;
+            db.products = demoProducts;
+            saveDB();
+        }
+
+        function saveDB() {
+            localStorage.setItem('lmv_users', JSON.stringify(db.users));
+            localStorage.setItem('lmv_contents', JSON.stringify(db.contents));
+            localStorage.setItem('lmv_products', JSON.stringify(db.products));
+            localStorage.setItem('lmv_notifications', JSON.stringify(db.notifications));
+            localStorage.setItem('lmv_subscriptions', JSON.stringify(db.subscriptions));
+        }
+
+        // ==========================================
+        // GESTION DE L'INTERFACE UTILISATEUR
+        // ==========================================
+
+        function updateUI() {
+            const navActions = document.getElementById('navActions');
+            const landingPage = document.getElementById('landingPage');
+            const mainApp = document.getElementById('mainApp');
+            const searchBar = document.getElementById('searchBar');
+
+            if (currentUser) {
+                // Utilisateur connecté
+                landingPage.classList.remove('active');
+                mainApp.style.display = 'flex';
+                searchBar.style.display = 'block';
+                
+                navActions.innerHTML = `
+                    <button class="btn btn-primary" onclick="openUploadModal()">
+                        <span>➕</span>
+                        <span>Créer</span>
+                    </button>
+                    <div class="user-menu">
+                        <div class="user-avatar" onclick="toggleUserMenu()">
+                            ${currentUser.avatar}
+                            ${db.notifications.filter(n => n.userId === currentUser.id && !n.read).length > 0 ? 
+                                '<span class="notification-badge">' + db.notifications.filter(n => n.userId === currentUser.id && !n.read).length + '</span>' : ''}
+                        </div>
+                        <div class="dropdown-menu" id="userDropdown">
+                            <div class="dropdown-item" onclick="showSection('chaine')">
+                                <span>📺</span> Votre chaîne
+                            </div>
+                            <div class="dropdown-item" onclick="showSection('parametres')">
+                                <span>⚙️</span> Paramètres
+                            </div>
+                            <div class="dropdown-item" onclick="toggleNotifications()">
+                                <span>🔔</span> Notifications
+                            </div>
+                            <div style="border-top: 1px solid #eee; margin: 0.5rem 0;"></div>
+                            <div class="dropdown-item" onclick="logout()">
+                                <span>🚪</span> Déconnexion
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Afficher section partenaire si applicable
+                if (['agronome', 'vendeur', 'loueur'].includes(currentUser.type)) {
+                    document.getElementById('partnerSection').style.display = 'block';
+                }
+
+                // Charger la section par défaut
+                showSection('accueil');
+            } else {
+                // Visiteur
+                landingPage.classList.add('active');
+                mainApp.style.display = 'none';
+                searchBar.style.display = 'none';
+                
+                navActions.innerHTML = `
+                    <button class="btn btn-secondary" onclick="openAuthModal()">Connexion</button>
+                `;
+            }
+        }
+
+        function setupEventListeners() {
+            // Fermer les dropdowns quand on clique ailleurs
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.user-menu')) {
+                    const dropdown = document.getElementById('userDropdown');
+                    if (dropdown) dropdown.classList.remove('active');
+                }
+            });
+
+            // Touche Echap pour fermer les modals
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeAllModals();
+                }
+            });
+        }
+
+        // ==========================================
+        // NAVIGATION ET SECTIONS
+        // ==========================================
+
+        function showSection(section) {
+            currentSection = section;
+            const content = document.getElementById('mainContent');
+            
+            // Mettre à jour sidebar active
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.textContent.toLowerCase().includes(section)) {
+                    item.classList.add('active');
+                }
+            });
+
+            switch(section) {
+                case 'accueil':
+                    renderHome(content);
+                    break;
+                case 'agronomes':
+                    renderAgronomes(content);
+                    break;
+                case 'marche':
+                    renderMarche(content);
+                    break;
+                case 'materiel':
+                    renderMateriel(content);
+                    break;
+                case 'chaine':
+                    renderMyChannel(content);
+                    break;
+                case 'dashboard':
+                    renderDashboard(content);
+                    break;
+                case 'contenu':
+                    renderContentManager(content);
+                    break;
+                case 'produits':
+                    renderProductManager(content);
+                    break;
+                case 'formations':
+                    renderFormations(content);
+                    break;
+                default:
+                    renderHome(content);
+            }
+        }
+
+        function renderHome(container) {
+            const tags = ['Tout', 'Agriculture', 'Élevage', 'Maraîchage', 'Cultures vivrières', 'Machinisme', 'Formations', 'Live'];
+            
+            let html = `
+                <div class="tags-container">
+                    ${tags.map((tag, i) => `
+                        <div class="tag ${i === 0 ? 'active' : ''}" onclick="filterByTag(this, '${tag}')">${tag}</div>
+                    `).join('')}
+                </div>
+                <div class="content-grid" id="contentGrid">
+                    ${generateContentGrid(db.contents)}
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function generateContentGrid(contents) {
+            if (contents.length === 0) {
+                return `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="empty-state-icon">📭</div>
+                        <h3>Aucun contenu disponible</h3>
+                        <p>Soyez le premier à publier du contenu !</p>
+                    </div>
+                `;
+            }
+
+            return contents.map(content => {
+                const user = db.users.find(u => u.id === content.userId);
+                return `
+                    <div class="video-card" onclick="openVideoPlayer('${content.id}')">
+                        <div class="thumbnail">
+                            <img src="${content.thumbnail}" alt="${content.title}">
+                            ${content.duration ? `<span class="duration">${content.duration}</span>` : ''}
+                            ${content.type === 'live' ? '<span class="live-badge">LIVE</span>' : ''}
+                        </div>
+                        <div class="video-info">
+                            <div class="channel-avatar">${user ? user.avatar : '?'}</div>
+                            <div class="video-details">
+                                <div class="video-title">${content.title}</div>
+                                <div class="video-meta">${user ? user.name : 'Utilisateur inconnu'} ✓</div>
+                                <div class="video-stats">
+                                    <span>${formatNumber(content.views)} vues</span>
+                                    <span>•</span>
+                                    <span>${timeAgo(content.date)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderAgronomes(container) {
+            const agronomes = db.users.filter(u => u.type === 'agronome');
+            
+            let html = `
+                <h2 style="margin-bottom: 1.5rem; color: var(--vert-emeraude);">👨‍🌾 Nos Agronomes Experts</h2>
+                
+                <div class="filters-sidebar" style="margin-bottom: 2rem;">
+                    <div class="filter-group">
+                        <h4>Filtrer par expérience</h4>
+                        <select onchange="filterAgronomes(this.value)" style="width: 100%; padding: 0.5rem; border-radius: 5px; border: 1px solid #ddd;">
+                            <option value="all">Tous les niveaux</option>
+                            <option value="5">Plus de 5 ans</option>
+                            <option value="10">Plus de 10 ans</option>
+                            <option value="15">Plus de 15 ans</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="content-grid" id="agronomesGrid">
+                    ${agronomes.map(agr => `
+                        <div class="video-card" onclick="showChannel('${agr.id}')">
+                            <div class="thumbnail" style="padding-top: 100%;">
+                                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--vert-emeraude), var(--terre-cuite)); color: white; font-size: 3rem;">
+                                    ${agr.avatar}
+                                </div>
+                            </div>
+                            <div class="video-info">
+                                <div class="video-details" style="text-align: center; width: 100%;">
+                                    <div class="video-title">${agr.name}</div>
+                                    <div class="video-meta">${agr.experience || 5} ans d'expérience</div>
+                                    <div class="video-stats" style="justify-content: center;">
+                                        <span>${formatNumber(agr.subscribers)} abonnés</span>
+                                    </div>
+                                    <div style="margin-top: 0.5rem; color: var(--terre-cuite); font-size: 0.9rem;">
+                                        ${agr.specialty}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function renderMarche(container) {
+            let html = `
+                <h2 style="margin-bottom: 1.5rem; color: var(--vert-emeraude);">🛍️ Le Marché des Produits</h2>
+                
+                <div class="layout-with-filters">
+                    <div class="filters-sidebar">
+                        <div class="filter-group">
+                            <h4>Catégories</h4>
+                            <div class="filter-option">
+                                <input type="checkbox" id="cat1" onchange="filterProducts()">
+                                <label for="cat1">Fruits & Légumes</label>
+                            </div>
+                            <div class="filter-option">
+                                <input type="checkbox" id="cat2" onchange="filterProducts()">
+                                <label for="cat2">Céréales</label>
+                            </div>
+                            <div class="filter-option">
+                                <input type="checkbox" id="cat3" onchange="filterProducts()">
+                                <label for="cat3">Tubercules</label>
+                            </div>
+                            <div class="filter-option">
+                                <input type="checkbox" id="cat4" onchange="filterProducts()">
+                                <label for="cat4">Produits transformés</label>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <h4>Prix maximum</h4>
+                            <input type="range" class="range-slider" min="0" max="100000" value="100000" oninput="filterProducts()">
+                        </div>
+                    </div>
+
+                    <div class="product-grid" id="productsGrid">
+                        ${generateProductGrid(db.products.filter(p => p.category !== 'tracteur' && p.type === 'vente'))}
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function renderMateriel(container) {
+            let html = `
+                <h2 style="margin-bottom: 1.5rem; color: var(--vert-emeraude);">🚜 La Station Matériel</h2>
+                
+                <div class="tags-container">
+                    <div class="tag active" onclick="filterMateriel('all')">Tout</div>
+                    <div class="tag" onclick="filterMateriel('vente')">En vente</div>
+                    <div class="tag" onclick="filterMateriel('location')">En location</div>
+                </div>
+
+                <div class="product-grid" id="materielGrid">
+                    ${generateProductGrid(db.products.filter(p => p.category === 'tracteur' || p.type === 'location'))}
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function generateProductGrid(products) {
+            if (products.length === 0) {
+                return `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="empty-state-icon">📦</div>
+                        <h3>Aucun produit disponible</h3>
+                    </div>
+                `;
+            }
+
+            return products.map(prod => {
+                const user = db.users.find(u => u.id === prod.userId);
+                return `
+                    <div class="product-card">
+                        <div style="position: relative;">
+                            <img src="${prod.image}" alt="${prod.name}" class="product-image">
+                            <span class="badge badge-${prod.type === 'vente' ? 'vente' : 'location'}">
+                                ${prod.type === 'vente' ? 'Vente' : 'Location'}
+                            </span>
+                            <div class="prix-tag">${prod.price.toLocaleString()} FCFA</div>
+                        </div>
+                        <div class="product-info">
+                            <div class="product-title">${prod.name}</div>
+                            <div class="product-seller">
+                                <span style="font-size: 1.2rem;">${user ? user.avatar : '🏪'}</span>
+                                <span>${user ? user.name : 'Vendeur'}</span>
+                            </div>
+                            <div class="rating">⭐⭐⭐⭐⭐ (4.8)</div>
+                            <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="contactSeller('${prod.id}')">
+                                ${prod.type === 'vente' ? 'Acheter' : 'Louer'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderMyChannel(container) {
+            if (!currentUser) return;
+
+            const myContents = db.contents.filter(c => c.userId === currentUser.id);
+            const myProducts = db.products.filter(p => p.userId === currentUser.id);
+            
+            let html = `
+                <div class="channel-header">
+                    <div class="channel-banner"></div>
+                    <div class="channel-info">
+                        <div class="channel-avatar-large">${currentUser.avatar}</div>
+                        <div class="channel-details">
+                            <h1 class="channel-name">${currentUser.name}</h1>
+                            <div class="channel-stats">
+                                ${formatNumber(currentUser.subscribers)} abonnés • 
+                                ${myContents.length} vidéos • 
+                                En ligne depuis ${timeAgo(currentUser.joined)}
+                            </div>
+                            <div style="color: #666; margin-bottom: 1rem;">${currentUser.bio || 'Aucune biographie'}</div>
+                            <div class="channel-actions">
+                                <button class="btn btn-primary" onclick="openUploadModal()">
+                                    <span>➕</span> Nouvelle vidéo
+                                </button>
+                                <button class="btn btn-secondary" onclick="openProductModal()">
+                                    <span>🛒</span> Ajouter un produit
+                                </button>
+                                <button class="btn btn-terre" onclick="showSection('parametres')">
+                                    <span>✏️</span> Modifier le profil
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="channel-nav">
+                        <div class="channel-nav-item active" onclick="switchChannelTab('videos')">Vidéos</div>
+                        <div class="channel-nav-item" onclick="switchChannelTab('shorts')">Shorts</div>
+                        <div class="channel-nav-item" onclick="switchChannelTab('products')">Boutique</div>
+                        <div class="channel-nav-item" onclick="switchChannelTab('about')">À propos</div>
+                    </div>
+                </div>
+
+                <div id="channelTabContent">
+                    <div class="content-grid">
+                        ${generateContentGrid(myContents)}
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function renderDashboard(container) {
+            const myContents = db.contents.filter(c => c.userId === currentUser.id);
+            const totalViews = myContents.reduce((sum, c) => sum + (c.views || 0), 0);
+            const totalLikes = myContents.reduce((sum, c) => sum + (c.likes || 0), 0);
+            
+            let html = `
+                <h2 style="margin-bottom: 1.5rem; color: var(--vert-emeraude);">📊 Tableau de bord</h2>
+                
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <div class="stat-value">${formatNumber(currentUser.subscribers)}</div>
+                        <div class="stat-label">Abonnés</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${formatNumber(totalViews)}</div>
+                        <div class="stat-label">Vues totales</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${formatNumber(totalLikes)}</div>
+                        <div class="stat-label">J'aime</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${myContents.length}</div>
+                        <div class="stat-label">Contenus publiés</div>
+                    </div>
+                </div>
+
+                <div class="upload-section">
+                    <h3 class="section-title">📈 Performance des 30 derniers jours</h3>
+                    <div style="background: var(--gris-clair); padding: 2rem; border-radius: 10px; text-align: center;">
+                        <p>Graphique d'analytiques (simulation)</p>
+                        <div style="height: 200px; display: flex; align-items: end; justify-content: space-around; margin-top: 2rem;">
+                            ${[40, 65, 45, 80, 55, 90, 70].map(h => `
+                                <div style="width: 8%; background: var(--vert-emeraude); height: ${h}%; border-radius: 5px 5px 0 0; opacity: 0.8;"></div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="upload-section">
+                    <h3 class="section-title">🎯 Actions rapides</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <button class="btn btn-primary" onclick="openUploadModal()" style="justify-content: center;">
+                            🎥 Publier une vidéo
+                        </button>
+                        <button class="btn btn-terre" onclick="openProductModal()" style="justify-content: center;">
+                            🛍️ Ajouter un produit
+                        </button>
+                        <button class="btn btn-secondary" onclick="showSection('contenu')" style="justify-content: center; color: var(--noir);">
+                            📁 Gérer le contenu
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function renderContentManager(container) {
+            const myContents = db.contents.filter(c => c.userId === currentUser.id);
+            
+            let html = `
+                <h2 style="margin-bottom: 1.5rem; color: var(--vert-emeraude);">🎬 Gestionnaire de contenu</h2>
+                
+                <div style="background: white; border-radius: 15px; overflow: hidden; box-shadow: var(--ombre);">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="background: var(--gris-clair);">
+                            <tr>
+                                <th style="padding: 1rem; text-align: left;">Contenu</th>
+                                <th style="padding: 1rem; text-align: center;">Vues</th>
+                                <th style="padding: 1rem; text-align: center;">Likes</th>
+                                <th style="padding: 1rem; text-align: center;">Date</th>
+                                <th style="padding: 1rem; text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${myContents.length === 0 ? `
+                                <tr>
+                                    <td colspan="5" style="padding: 3rem; text-align: center; color: #666;">
+                                        Aucun contenu publié pour le moment
+                                    </td>
+                                </tr>
+                            ` : myContents.map(content => `
+                                <tr style="border-bottom: 1px solid var(--gris);">
+                                    <td style="padding: 1rem;">
+                                        <div style="display: flex; align-items: center; gap: 1rem;">
+                                            <img src="${content.thumbnail}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 8px;">
+                                            <div>
+                                                <div style="font-weight: 600;">${content.title}</div>
+                                                <div style="font-size: 0.85rem; color: #666;">${content.type}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 1rem; text-align: center;">${formatNumber(content.views)}</td>
+                                    <td style="padding: 1rem; text-align: center;">${formatNumber(content.likes)}</td>
+                                    <td style="padding: 1rem; text-align: center;">${timeAgo(content.date)}</td>
+                                    <td style="padding: 1rem; text-align: center;">
+                                        <button onclick="deleteContent('${content.id}')" style="background: none; border: none; color: var(--rouge); cursor: pointer; font-size: 1.2rem;" title="Supprimer">
+                                            🗑️
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function renderProductManager(container) {
+            const myProducts = db.products.filter(p => p.userId === currentUser.id);
+            
+            let html = `
+                <h2 style="margin-bottom: 1.5rem; color: var(--vert-emeraude);">🛍️ Mes produits</h2>
+                
+                <button class="btn btn-primary" onclick="openProductModal()" style="margin-bottom: 1.5rem;">
+                    <span>➕</span> Ajouter un produit
+                </button>
+
+                <div class="product-grid">
+                    ${myProducts.map(prod => `
+                        <div class="product-card">
+                            <div style="position: relative;">
+                                <img src="${prod.image}" alt="${prod.name}" class="product-image">
+                                <span class="badge badge-${prod.type === 'vente' ? 'vente' : 'location'}">
+                                    ${prod.type === 'vente' ? 'Vente' : 'Location'}
+                                </span>
+                            </div>
+                            <div class="product-info">
+                                <div class="product-title">${prod.name}</div>
+                                <div class="product-price">${prod.price.toLocaleString()} FCFA</div>
+                                <div style="color: #666; font-size: 0.9rem; margin-bottom: 0.5rem;">${prod.category}</div>
+                                <button class="btn btn-secondary" style="width: 100%; color: var(--noir);" onclick="deleteProduct('${prod.id}')">
+                                    Supprimer
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function renderFormations(container) {
+            const formations = db.contents.filter(c => c.category === 'formation' || c.category === 'conseil');
+            
+            let html = `
+                <h2 style="margin-bottom: 1.5rem; color: var(--vert-emeraude);">🎓 Formations & Cours</h2>
+                
+                <div class="tags-container">
+                    <div class="tag active">Toutes</div>
+                    <div class="tag">Gratuites</div>
+                    <div class="tag">Payantes</div>
+                    <div class="tag">Certifiantes</div>
+                </div>
+
+                <div class="content-grid">
+                    ${generateContentGrid(formations)}
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        // ==========================================
+        // SYSTÈME D'AUTHENTIFICATION
+        // ==========================================
+
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function closeAllModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+            document.getElementById('videoPlayer').classList.remove('active');
+        }
+
+        function switchAuthTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tab === 'login') {
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('authTitle').textContent = 'Connexion';
+            } else {
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('registerForm').classList.remove('hidden');
+                document.getElementById('authTitle').textContent = 'Inscription';
+            }
+        }
+
+        function togglePartnerFields() {
+            const type = document.getElementById('regType').value;
+            const fields = document.getElementById('partnerFields');
+            if (['agronome', 'vendeur', 'loueur'].includes(type)) {
+                fields.style.display = 'block';
+            } else {
+                fields.style.display = 'none';
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            const user = db.users.find(u => u.email === email && u.password === password);
+            
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('lmv_currentUser', JSON.stringify(user));
+                closeModal('authModal');
+                updateUI();
+                showToast('Connexion réussie ! Bienvenue ' + user.name);
+            } else {
+                showToast('Email ou mot de passe incorrect', 'error');
+            }
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const type = document.getElementById('regType').value;
+            const password = document.getElementById('regPassword').value;
+            const passwordConfirm = document.getElementById('regPasswordConfirm').value;
+            const specialty = document.getElementById('regSpecialty').value;
+            
+            if (password !== passwordConfirm) {
+                showToast('Les mots de passe ne correspondent pas', 'error');
+                return;
+            }
+            
+            if (db.users.find(u => u.email === email)) {
+                showToast('Cet email est déjà utilisé', 'error');
+                return;
+            }
+            
+            const newUser = {
+                id: Date.now().toString(),
+                name,
+                email,
+                type,
+                password,
+                specialty: specialty || '',
+                avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+                bio: '',
+                experience: 0,
+                subscribers: 0,
+                joined: new Date().toISOString().split('T')[0]
+            };
+            
+            db.users.push(newUser);
+            saveDB();
+            
+            currentUser = newUser;
+            localStorage.setItem('lmv_currentUser', JSON.stringify(newUser));
+            
+            closeModal('authModal');
+            updateUI();
+            showToast('Compte créé avec succès ! Bienvenue ' + name);
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('lmv_currentUser');
+            updateUI();
+            showToast('Déconnexion réussie');
+        }
+
+        // ==========================================
+        // GESTION DU CONTENU (UPLOAD)
+        // ==========================================
+
+        function openUploadModal() {
+            if (!currentUser) {
+                openAuthModal();
+                return;
+            }
+            document.getElementById('uploadModal').classList.add('active');
+        }
+
+        function selectUploadType(type) {
+            currentUploadType = type;
+            document.querySelectorAll('.type-option').forEach(t => t.classList.remove('selected'));
+            document.getElementById('type' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('selected');
+        }
+
+        function previewFile() {
+            const input = document.getElementById('contentFile');
+            const container = document.getElementById('previewContainer');
+            const file = input.files[0];
+            
+            if (file) {
+                const url = URL.createObjectURL(file);
+                container.innerHTML = file.type.startsWith('video/') 
+                    ? `<video src="${url}" controls style="max-width: 100%; border-radius: 10px;"></video>`
+                    : `<img src="${url}" style="max-width: 100%; border-radius: 10px;">`;
+                container.classList.add('active');
+                document.getElementById('fileLabel').innerHTML = `<div style="color: var(--vert-emeraude);">✅ ${file.name}</div>`;
+            }
+        }
+
+        function handleUpload(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('contentTitle').value;
+            const description = document.getElementById('contentDesc').value;
+            const category = document.getElementById('contentCategory').value;
+            const fileInput = document.getElementById('contentFile');
+            
+            if (!fileInput.files[0]) {
+                showToast('Veuillez sélectionner un fichier', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const thumbnailUrl = URL.createObjectURL(file);
+            
+            const newContent = {
+                id: Date.now().toString(),
+                userId: currentUser.id,
+                type: currentUploadType,
+                title,
+                description,
+                category,
+                thumbnail: thumbnailUrl,
+                duration: file.type.startsWith('video/') ? '0:00' : null,
+                views: 0,
+                likes: 0,
+                date: new Date().toISOString().split('T')[0]
+            };
+            
+            db.contents.unshift(newContent);
+            saveDB();
+            
+            // Créer une notification pour les abonnés
+            const subs = db.subscriptions.filter(s => s.channelId === currentUser.id);
+            subs.forEach(sub => {
+                db.notifications.push({
+                    id: Date.now().toString() + Math.random(),
+                    userId: sub.userId,
+                    type: 'new_content',
+                    message: `${currentUser.name} a publié "${title}"`,
+                    read: false,
+                    date: new Date().toISOString()
+                });
+            });
+            saveDB();
+            
+            closeModal('uploadModal');
+            showToast('Contenu publié avec succès !');
+            
+            // Reset form
+            document.getElementById('uploadForm').reset();
+            document.getElementById('previewContainer').innerHTML = '';
+            document.getElementById('previewContainer').classList.remove('active');
+            
+            if (currentSection === 'chaine' || currentSection === 'contenu') {
+                showSection(currentSection);
+            }
+        }
+
+        function deleteContent(contentId) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce contenu ?')) {
+                db.contents = db.contents.filter(c => c.id !== contentId);
+                saveDB();
+                showSection('contenu');
+                showToast('Contenu supprimé');
+            }
+        }
+
+        // ==========================================
+        // GESTION DES PRODUITS
+        // ==========================================
+
+        function openProductModal() {
+            if (!currentUser) {
+                openAuthModal();
+                return;
+            }
+            document.getElementById('productModal').classList.add('active');
+        }
+
+        function togglePriceField() {
+            const type = document.getElementById('productType').value;
+            const rentalFields = document.getElementById('rentalFields');
+            rentalFields.style.display = type === 'location' ? 'block' : 'none';
+        }
+
+        function previewProductImage() {
+            const input = document.getElementById('productImage');
+            const container = document.getElementById('productPreview');
+            
+            if (input.files[0]) {
+                const url = URL.createObjectURL(input.files[0]);
+                container.innerHTML = `<img src="${url}" style="max-width: 100%; border-radius: 10px; margin-top: 1rem;">`;
+                container.classList.add('active');
+            }
+        }
+
+        function handleProductSubmit(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('productName').value;
+            const category = document.getElementById('productCategory').value;
+            const type = document.getElementById('productType').value;
+            const price = parseInt(document.getElementById('productPrice').value);
+            const description = document.getElementById('productDesc').value;
+            const imageInput = document.getElementById('productImage');
+            
+            let imageUrl = 'https://via.placeholder.com/400x300?text=Produit';
+            if (imageInput.files[0]) {
+                imageUrl = URL.createObjectURL(imageInput.files[0]);
+            }
+            
+            const newProduct = {
+                id: Date.now().toString(),
+                userId: currentUser.id,
+                name,
+                category,
+                type,
+                price,
+                description,
+                image: imageUrl,
+                duration: type === 'location' ? document.getElementById('rentalDuration').value : null
+            };
+            
+            db.products.push(newProduct);
+            saveDB();
+            
+            closeModal('productModal');
+            showToast('Produit ajouté avec succès !');
+            document.getElementById('productForm').reset();
+            
+            if (currentSection === 'produits') {
+                showSection('produits');
+            }
+        }
+
+        function deleteProduct(productId) {
+            if (confirm('Supprimer ce produit ?')) {
+                db.products = db.products.filter(p => p.id !== productId);
+                saveDB();
+                showSection('produits');
+                showToast('Produit supprimé');
+            }
+        }
+
+        // ==========================================
+        // LECTEUR VIDÉO
+        // ==========================================
+
+        function openVideoPlayer(contentId) {
+            const content = db.contents.find(c => c.id === contentId);
+            if (!content) return;
+            
+            const user = db.users.find(u => u.id === content.userId);
+            
+            document.getElementById('playerTitle').textContent = content.title;
+            document.getElementById('playerDescription').textContent = content.description || 'Aucune description';
+            document.getElementById('playerChannelName').textContent = user ? user.name : 'Chaîne inconnue';
+            document.getElementById('playerChannelAvatar').textContent = user ? user.avatar : '?';
+            document.getElementById('likeCount').textContent = formatNumber(content.likes);
+            
+            // Simuler la vidéo avec l'aperçu
+            const videoPlayer = document.getElementById('mainVideoPlayer');
+            if (content.thumbnail) {
+                videoPlayer.poster = content.thumbnail;
+            }
+            
+            // Incrémenter les vues
+            content.views++;
+            saveDB();
+            
+            // Vidéos similaires
+            const related = db.contents.filter(c => c.id !== contentId).slice(0, 4);
+            document.getElementById('relatedVideos').innerHTML = related.map(r => {
+                const rUser = db.users.find(u => u.id === r.userId);
+                return `
+                    <div style="display: flex; gap: 1rem; cursor: pointer;" onclick="openVideoPlayer('${r.id}')">
+                        <img src="${r.thumbnail}" style="width: 120px; height: 70px; object-fit: cover; border-radius: 8px;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem;">${r.title}</div>
+                            <div style="color: #aaa; font-size: 0.85rem;">${rUser ? rUser.name : 'Inconnu'}</div>
+                            <div style="color: #888; font-size: 0.8rem;">${formatNumber(r.views)} vues</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('videoPlayer').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeVideoPlayer() {
+            document.getElementById('videoPlayer').classList.remove('active');
+            document.getElementById('mainVideoPlayer').pause();
+            document.body.style.overflow = '';
+        }
+
+        function toggleLike(btn) {
+            btn.classList.toggle('liked');
+            const isLiked = btn.classList.contains('liked');
+            showToast(isLiked ? 'Ajouté aux favoris !' : 'Retiré des favoris');
+        }
+
+        function toggleSubscribe(btn) {
+            if (!currentUser) {
+                openAuthModal();
+                return;
+            }
+            
+            const isSubscribed = btn.textContent.trim() === "S'abonner";
+            btn.textContent = isSubscribed ? "Abonné ✓" : "S'abonner";
+            btn.classList.toggle('btn-primary');
+            btn.classList.toggle('btn-secondary');
+            
+            showToast(isSubscribed ? 'Abonnement ajouté !' : 'Désabonné');
+        }
+
+        // ==========================================
+        // UTILITAIRES ET HELPERS
+        // ==========================================
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.background = type === 'error' ? 'var(--rouge)' : 'var(--vert-emeraude)';
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+            return num.toString();
+        }
+
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            let interval = seconds / 31536000;
+            if (interval > 1) return Math.floor(interval) + ' ans';
+            interval = seconds / 2592000;
+            if (interval > 1) return Math.floor(interval) + ' mois';
+            interval = seconds / 86400;
+            if (interval > 1) return Math.floor(interval) + ' jours';
+            interval = seconds / 3600;
+            if (interval > 1) return Math.floor(interval) + ' h';
+            interval = seconds / 60;
+            if (interval > 1) return Math.floor(interval) + ' min';
+            return 'À l\'instant';
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        function toggleUserMenu() {
+            document.getElementById('userDropdown').classList.toggle('active');
+        }
+
+        function toggleNotifications() {
+            const panel = document.getElementById('notificationPanel');
+            panel.classList.toggle('active');
+            
+            if (panel.classList.contains('active')) {
+                // Marquer comme lues
+                db.notifications.forEach(n => {
+                    if (n.userId === currentUser.id) n.read = true;
+                });
+                saveDB();
+                renderNotifications();
+            }
+        }
+
+        function renderNotifications() {
+            const list = document.getElementById('notificationList');
+            const myNotifs = db.notifications.filter(n => n.userId === currentUser.id).slice(-20);
+            
+            if (myNotifs.length === 0) {
+                list.innerHTML = '<div style="padding: 2rem; text-align: center; color: #666;">Aucune notification</div>';
+                return;
+            }
+            
+            list.innerHTML = myNotifs.reverse().map(n => `
+                <div class="notification-item ${n.read ? '' : 'unread'}">
+                    <div style="font-size: 1.5rem;">${n.type === 'new_content' ? '🎥' : '🔔'}</div>
+                    <div>
+                        <div>${n.message}</div>
+                        <div style="font-size: 0.85rem; color: #888; margin-top: 0.3rem;">${timeAgo(n.date)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showHome() {
+            if (currentUser) {
+                showSection('accueil');
+            } else {
+                document.getElementById('landingPage').classList.add('active');
+            }
+        }
+
+        function showChannel(userId) {
+            // Pour l'instant, rediriger vers la page de l'utilisateur
+            const user = db.users.find(u => u.id === userId);
+            if (user) {
+                showToast('Chaîne de ' + user.name + ' (Fonctionnalité à venir)');
+            }
+        }
+
+        function filterByTag(element, tag) {
+            document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+            element.classList.add('active');
+            
+            // Filtrer le contenu
+            const filtered = tag === 'Tout' 
+                ? db.contents 
+                : db.contents.filter(c => c.category === tag.toLowerCase() || c.title.toLowerCase().includes(tag.toLowerCase()));
+            
+            document.getElementById('contentGrid').innerHTML = generateContentGrid(filtered);
+        }
+
+        function filterAgronomes(experience) {
+            const agronomes = db.users.filter(u => {
+                if (u.type !== 'agronome') return false;
+                if (experience === 'all') return true;
+                return (u.experience || 0) >= parseInt(experience);
+            });
+            
+            document.getElementById('agronomesGrid').innerHTML = agronomes.map(agr => `
+                <div class="video-card" onclick="showChannel('${agr.id}')">
+                    <div class="thumbnail" style="padding-top: 100%;">
+                        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--vert-emeraude), var(--terre-cuite)); color: white; font-size: 3rem;">
+                            ${agr.avatar}
+                        </div>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-details" style="text-align: center; width: 100%;">
+                            <div class="video-title">${agr.name}</div>
+                            <div class="video-meta">${agr.experience || 5} ans d'expérience</div>
+                            <div class="video-stats" style="justify-content: center;">
+                                <span>${formatNumber(agr.subscribers)} abonnés</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterProducts() {
+            // Simulation de filtrage
+            showToast('Filtres appliqués');
+        }
+
+        function filterMateriel(type) {
+            const filtered = type === 'all' 
+                ? db.products.filter(p => p.category === 'tracteur' || p.type === 'location')
+                : db.products.filter(p => p.type === type);
+            
+            document.getElementById('materielGrid').innerHTML = generateProductGrid(filtered);
+        }
+
+        function switchChannelTab(tab) {
+            document.querySelectorAll('.channel-nav-item').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const container = document.getElementById('channelTabContent');
+            const myContents = db.contents.filter(c => c.userId === currentUser.id);
+            
+            switch(tab) {
+                case 'videos':
+                    container.innerHTML = `<div class="content-grid">${generateContentGrid(myContents.filter(c => c.type === 'video'))}</div>`;
+                    break;
+                case 'shorts':
+                    container.innerHTML = `<div class="content-grid">${generateContentGrid(myContents.filter(c => c.type === 'short'))}</div>`;
+                    break;
+                case 'products':
+                    const myProducts = db.products.filter(p => p.userId === currentUser.id);
+                    container.innerHTML = `<div class="product-grid">${generateProductGrid(myProducts)}</div>`;
+                    break;
+                case 'about':
+                    container.innerHTML = `
+                        <div style="background: white; padding: 2rem; border-radius: 15px; box-shadow: var(--ombre);">
+                            <h3>À propos</h3>
+                            <p style="margin-top: 1rem; line-height: 1.8;">${currentUser.bio || 'Aucune description pour le moment.'}</p>
+                            <div style="margin-top: 2rem;">
+                                <h4>Statistiques</h4>
+                                <p>📅 A rejoint le : ${currentUser.joined}</p>
+                                <p>👁️ ${myContents.reduce((sum, c) => sum + c.views, 0)} vues totales</p>
+                                <p>👍 ${myContents.reduce((sum, c) => sum + c.likes, 0)} j'aime reçus</p>
+                            </div>
+                        </div>
+                    `;
+                    break;
+            }
+        }
+
+        function performSearch() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            if (!query) return;
+            
+            const filtered = db.contents.filter(c => 
+                c.title.toLowerCase().includes(query) || 
+                c.description.toLowerCase().includes(query)
+            );
+            
+            const content = document.getElementById('mainContent');
+            content.innerHTML = `
+                <h2 style="margin-bottom: 1.5rem;">Résultats pour "${query}"</h2>
+                <div class="content-grid">${generateContentGrid(filtered)}</div>
+            `;
+        }
+
+        function contactSeller(productId) {
+            if (!currentUser) {
+                openAuthModal();
+                return;
+            }
+            showToast('Demande de contact envoyée au vendeur !');
+        }
+
+        function previewCategory(cat) {
+            showToast('Explorez cette catégorie en vous inscrivant !');
+            setTimeout(openAuthModal, 1000);
+        }
+    
